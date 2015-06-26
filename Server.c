@@ -66,3 +66,81 @@ void* thread_function(void *param)
 	fclose(file);
 	close(client_id);	
 }
+
+int main(int argc, char* argv[])
+{
+	int socket_id = 0, client_id = 0, opt = 1;
+	struct sockaddr_in server_socket;
+
+#ifdef THREAD	
+	pthread_t threads[MAX_THREAD_COUNT] = { NULL };
+	int i = 0;
+#elif defined(PROCESS)
+	pid_t processId = 0;
+#endif
+	
+	if ((socket_id = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+		printf("ERROR opening socket.\n");
+		return 1;
+	}
+
+	server_socket.sin_family = AF_INET;
+	server_socket.sin_addr.s_addr = INADDR_ANY;
+	server_socket.sin_port = htons(PORT);
+
+	if (setsockopt(socket_id, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(int)) == -1) {
+    		printf("Socket options weren't set.\n");
+		return 1;
+	}
+
+	if ((bind(socket_id, (struct sockaddr *)&server_socket, sizeof(server_socket))) == -1) {
+		printf("ERROR on binding.\n");
+		return 1;
+	}
+
+	if (listen(socket_id, LISTEN_QUEUE_SIZE) == -1) {
+		printf("ERROR on listening.\n");
+		return -1;
+	}
+
+	while (TRUE) {
+		client_id = accept(socket_id, NULL, (socklen_t *)SOCK_CLOEXEC);
+
+		if (client_id < 0) {
+			printf("ERROR on accept client.\n");
+			continue;
+		}
+#ifdef THREAD
+		for (i = 0; i < MAX_THREAD_COUNT; ++i)
+			if ((threads[i] == NULL) || (pthread_kill(threads[i], 0) != ESRCH))
+				break;
+
+		if (i >= MAX_THREAD_COUNT) {
+			printf("No free threads.\n");
+			continue;
+		}
+
+		if (pthread_create(&threads[i], NULL, thread_function, (void*)client_id)) {
+			printf("Thread wasn't created.\n");
+			continue;
+		}
+		printf("Thread was created.\n");
+#elif defined(PROCESS)
+		switch (processId = fork()) {
+		case -1:
+			printf("Process creation failed.\n");
+			break;
+		case 0:
+			thread_function((void*)client_id);
+			return 0;
+		default:
+		  	close(client_id);
+			break;
+		}
+#else
+		thread_function((void*)client_id);
+#endif			
+	}
+
+	return 0;
+}
