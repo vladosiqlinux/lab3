@@ -20,7 +20,8 @@ void* thread_function(void *param)
 {
 	char filepath[MAX_FILENAME_SIZE];
 	unsigned char buffer[BUFFER_SIZE];
-	int bytes_send = 0, bytes_read = 0, client_id = (int)param;
+	int bytes_send = 0, bytes_read = 0;
+	long long client_id = (long long)param;
 	FILE *file;
 
 	memset(buffer, 0, sizeof(buffer));
@@ -69,11 +70,12 @@ void* thread_function(void *param)
 
 int main(int argc, char* argv[])
 {
-	int socket_id = 0, client_id = 0, opt = 1;
+	int socket_id = 0, opt = 1;
+	long long client_id = 0;
 	struct sockaddr_in server_socket;
 
 #ifdef THREAD	
-	pthread_t threads[MAX_THREAD_COUNT] = { NULL };
+	pthread_t threads[MAX_THREAD_COUNT] = {};
 	int i = 0;
 #elif defined(PROCESS)
 	pid_t processId = 0;
@@ -112,7 +114,7 @@ int main(int argc, char* argv[])
 		}
 #ifdef THREAD
 		for (i = 0; i < MAX_THREAD_COUNT; ++i)
-			if ((threads[i] == NULL) || (pthread_kill(threads[i], 0) != ESRCH))
+			if ((threads[i]==0) || (pthread_kill(threads[i], 0) != ESRCH))
 				break;
 
 		if (i >= MAX_THREAD_COUNT) {
