@@ -1,6 +1,3 @@
-all:
-	gcc Client.c -o Client.bin
-	gcc Server.c -o Server.bin
 thread:
 	gcc Client.c -o Client.bin
 	gcc Server.c -DTHREAD -o Server.bin -lpthread
